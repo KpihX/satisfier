@@ -21,38 +21,143 @@ def read_file(file_path: str) -> pd.DataFrame:
         raise
 
 def load_data(activities_file: str, choices_file: str, k: int) -> AssignmentProblem:
-    """Charge les données depuis les fichiers CSV ou Excel"""
-    # Lecture des fichiers
-    activities_df = read_file(activities_file)
-    choices_df = read_file(choices_file)
+    """
+    Charge les données depuis les fichiers CSV ou Excel.
     
-    # Vérification des colonnes requises
-    required_activities_cols = {'id', 'name', 'capacity'}
-    if not all(col in activities_df.columns for col in required_activities_cols):
-        raise ValueError("Le fichier des activités doit contenir les colonnes : id, name, capacity")
+    Format attendu pour le fichier des activités:
+    +----+------------------+----------+
+    | Id | Nom             | Capacité |
+    +----+------------------+----------+
+    | 1  | Football        | 15       |
+    | 2  | Basket          | 12       |
+    | 3  | Tennis          | 8        |
+    +----+------------------+----------+
     
-    required_choices_cols = {'name'} | {f'choice{i}' for i in range(1, k + 1)}
-    if not all(col in choices_df.columns for col in required_choices_cols):
-        raise ValueError(f"Le fichier des choix doit contenir les colonnes : name, choice1, ..., choice{k}")
+    Format attendu pour le fichier des choix (exemple avec k=3):
+    +-------------+------------+------------+------------+
+    | Nom         | Choix 1    | Choix 2    | Choix 3    |
+    +-------------+------------+------------+------------+
+    | Jean Dupont | 1          | 3          | 2          |
+    | Marie Smith | 2          | 1          | 3          |
+    +-------------+------------+------------+------------+
     
-    # Création des choix disponibles
-    choices = {
-        int(row['id']): Choice(int(row['id']), str(row['name']), int(row['capacity']))
-        for _, row in activities_df.iterrows()
-    }
-    
-    # Création des étudiants avec leurs choix (ID auto-générés)
-    students = []
-    for idx, row in choices_df.iterrows():
-        student_id = idx + 1  # ID auto-généré
+    Note: Les noms des colonnes sont flexibles, seul l'ordre est important:
+    - Activités: [id, nom, capacité]
+    - Choix: [nom étudiant, choix 1, choix 2, ..., choix k]
+    """
+    try:
+        # Lecture des fichiers
+        activities_df = read_file(activities_file)
+        choices_df = read_file(choices_file)
+        
+        # Vérification du nombre de colonnes
+        if len(activities_df.columns) != 3:
+            raise ValueError(
+                "Le fichier des activités doit avoir exactement 3 colonnes : "
+                "ID, Nom, et Capacité (dans cet ordre)."
+            )
+        
+        if len(choices_df.columns) != k + 1:
+            raise ValueError(
+                f"Le fichier des choix doit avoir {k + 1} colonnes : "
+                f"Nom de l'étudiant suivi de {k} choix."
+            )
+            
+        # Vérification que k ne dépasse pas le nombre d'activités
+        if k > len(activities_df):
+            raise ValueError(
+                f"Le nombre de choix demandé ({k}) est supérieur au nombre "
+                f"d'activités disponibles ({len(activities_df)})"
+            )
+
+        # Vérification des types de données dans le fichier des activités
         try:
-            choices_list = [int(row[f'choice{i}']) for i in range(1, k + 1)]
+            activities_df.iloc[:, 0] = activities_df.iloc[:, 0].astype(int)
+            activities_df.iloc[:, 2] = activities_df.iloc[:, 2].astype(int)
         except ValueError as e:
-            raise ValueError(f"Erreur de format pour l'étudiant {row['name']}: les choix doivent être des nombres")
-        student = Student(student_id, str(row['name']), choices_list)
-        students.append(student)
+            raise ValueError(
+                "Erreur dans le fichier des activités : "
+                "L'ID et la Capacité doivent être des nombres entiers."
+            ) from e
+
+        # Vérification des types de données dans le fichier des choix
+        try:
+            for i in range(1, k + 1):
+                choices_df.iloc[:, i] = choices_df.iloc[:, i].astype(int)
+        except ValueError as e:
+            raise ValueError(
+                "Erreur dans le fichier des choix : "
+                "Les choix doivent être des nombres entiers correspondant aux IDs des activités."
+            ) from e
+
+        # Vérification que les IDs des choix existent dans les activités
+        activity_ids = set(activities_df.iloc[:, 0])
+        for i in range(1, k + 1):
+            invalid_ids = set(choices_df.iloc[:, i]) - activity_ids
+            if invalid_ids:
+                raise ValueError(
+                    f"Erreur dans les choix : les IDs suivants n'existent pas "
+                    f"dans le fichier des activités : {invalid_ids}"
+                )
+
+        # Création des choix disponibles
+        choices = {
+            int(row.iloc[0]): Choice(
+                int(row.iloc[0]),
+                str(row.iloc[1]),
+                int(row.iloc[2])
+            )
+            for _, row in activities_df.iterrows()
+        }
+        
+        # Création des étudiants avec leurs choix
+        students = []
+        for idx, row in choices_df.iterrows():
+            student_id = idx + 1
+            try:
+                choices_list = [int(row.iloc[i]) for i in range(1, k + 1)]
+            except ValueError as e:
+                raise ValueError(
+                    f"Erreur de format pour l'étudiant {row.iloc[0]}: "
+                    f"les choix doivent être des nombres entiers"
+                ) from e
+            student = Student(student_id, str(row.iloc[0]), choices_list)
+            students.append(student)
+        
+        return AssignmentProblem(students, choices, k)
+
+    except Exception as e:
+        if isinstance(e, ValueError):
+            raise
+        raise ValueError(f"Une erreur inattendue est survenue : {str(e)}")
+
+def print_example_formats():
+    """Affiche les formats attendus des fichiers d'entrée"""
+    print("\nFormat attendu pour le fichier des activités:")
+    print("+----+------------------+----------+")
+    print("| Id | Nom             | Capacité |")
+    print("+----+------------------+----------+")
+    print("| 1  | Football        | 15       |")
+    print("| 2  | Basket          | 12       |")
+    print("| 3  | Tennis          | 8        |")
+    print("+----+------------------+----------+")
+    print("\nNote: Les noms des colonnes sont flexibles, mais l'ordre doit être:")
+    print("1. ID (nombre entier)")
+    print("2. Nom de l'activité (texte)")
+    print("3. Capacité (nombre entier)")
     
-    return AssignmentProblem(students, choices, k)
+    print("\nFormat attendu pour le fichier des choix (exemple avec k=3):")
+    print("+-------------+------------+------------+------------+")
+    print("| Nom         | Choix 1    | Choix 2    | Choix 3    |")
+    print("+-------------+------------+------------+------------+")
+    print("| Jean Dupont | 1          | 3          | 2          |")
+    print("| Marie Smith | 2          | 1          | 3          |")
+    print("+-------------+------------+------------+------------+")
+    print("\nNote: Les noms des colonnes sont flexibles, mais l'ordre doit être:")
+    print("1. Nom de l'étudiant (texte)")
+    print("2. Premier choix (ID de l'activité)")
+    print("3. Deuxième choix (ID de l'activité)")
+    print("etc. jusqu'à k choix")
 
 def generate_results_file(solution: AssignmentProblem, summary: dict, output_dir: str) -> str:
     """Génère un fichier Excel avec les résultats de l'assignation et les statistiques"""
@@ -80,7 +185,7 @@ def generate_results_file(solution: AssignmentProblem, summary: dict, output_dir
     results_df = pd.DataFrame(results_data)
     
     # Création du nom de fichier avec timestamp
-    timestamp = datetime.now().strftime("%d-%m-%Y_%Hh%M")
+    timestamp = datetime.now().strftime("%d-%m-%Y_%Hh%Mmin%Ssec")
     output_file = os.path.join(output_dir, f'resultats_assignation_{timestamp}.xlsx')
     
     # Préparation des statistiques de satisfaction

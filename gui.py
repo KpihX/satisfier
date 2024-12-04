@@ -10,8 +10,8 @@ class SatisfierGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Satisfier - Optimisation des choix")
-        self.root.geometry("800x800")
-        self.root.configure(padx=20, pady=20)
+        self.root.geometry("800x910")  # Augmentation de la hauteur
+        self.root.configure(padx=20, pady=5)
 
         # Création du logo s'il n'existe pas
         if not os.path.exists('assets/logo.png'):
@@ -27,6 +27,7 @@ class SatisfierGUI:
         style.configure('Title.TLabel', font=('Helvetica', 16, 'bold'))
         style.configure('Header.TLabel', font=('Helvetica', 12, 'bold'))
         style.configure('Info.TLabel', font=('Helvetica', 10), wraplength=700)
+        style.configure('Example.TLabel', font=('Courier', 9), wraplength=700)
 
         # Logo
         try:
@@ -43,8 +44,9 @@ class SatisfierGUI:
         choices_frame = ttk.LabelFrame(root, text="Paramètres", padding=10)
         choices_frame.pack(fill='x', pady=(0, 20))
         
-        ttk.Label(choices_frame, text="Nombre de choix par élève :").pack(side='left', padx=5)
+        ttk.Label(choices_frame, text="Nombre de choix par élève (n) :").pack(side='left', padx=5)
         ttk.Entry(choices_frame, textvariable=self.num_choices, width=5).pack(side='left', padx=5)
+        ttk.Label(choices_frame, text="Note : n ne doit pas dépasser le nombre d'activités disponibles.", style='Info.TLabel').pack(anchor='w', pady=(0, 5))
 
         # Frame pour les fichiers
         files_frame = ttk.LabelFrame(root, text="Sélection des fichiers", padding=10)
@@ -53,7 +55,19 @@ class SatisfierGUI:
         # Section Activités
         ttk.Label(files_frame, text="Fichier des activités :", style='Header.TLabel').pack(anchor='w', pady=(0, 5))
         ttk.Label(files_frame, text="Format attendu (CSV ou Excel) :", style='Info.TLabel').pack(anchor='w')
-        ttk.Label(files_frame, text="id,name,capacity\n1,Théâtre,3\n2,Musique,2\n...", font=('Courier', 9)).pack(anchor='w', pady=(0, 10))
+        activities_example = (
+            "+------+------------------+------------+\n"
+            "| Id   | Nom              | Capacité   |\n"
+            "+------+------------------+------------+\n"
+            "| 1    | Activité 1       | val 1      |\n"
+            "| ...  |    ...           |  ...       |\n"
+            "| m    | Activité m       | val m      |\n"
+            "+------+------------------+------------+"
+        )
+        ttk.Label(files_frame, text=activities_example, style='Example.TLabel').pack(anchor='w', pady=(0, 5))
+        ttk.Label(files_frame, 
+                 text="Note : Les noms des colonnes sont flexibles, mais l'ordre doit être : ID, Nom, Capacité", 
+                 style='Info.TLabel').pack(anchor='w', pady=(0, 10))
         
         file_select_frame = ttk.Frame(files_frame)
         file_select_frame.pack(fill='x', pady=(0, 20))
@@ -63,8 +77,19 @@ class SatisfierGUI:
         # Section Choix des élèves
         ttk.Label(files_frame, text="Fichier des choix des élèves :", style='Header.TLabel').pack(anchor='w', pady=(0, 5))
         ttk.Label(files_frame, text="Format attendu (CSV ou Excel) :", style='Info.TLabel').pack(anchor='w')
-        ttk.Label(files_frame, text="name,choice1,choice2,choice3\nEmma Martin,1,3,5\nLucas Dubois,2,1,4\n...", 
-                 font=('Courier', 9)).pack(anchor='w', pady=(0, 10))
+        choices_example = (
+            "+--------------+------------+-------+------------+\n"
+            "| Nom          | Choix 1    | ...   | Choix n    |\n"
+            "+--------------+------------+-------+------------+\n"
+            "| Nom1         | 1          | ...   | 2          |\n"
+            "| ...          | ...        | ...   | ...        |\n"
+            "| Nom2         | 3          | ...   | 1          |\n"
+            "+--------------+------------+-------+------------+"
+        )
+        ttk.Label(files_frame, text=choices_example, style='Example.TLabel').pack(anchor='w', pady=(0, 5))
+        ttk.Label(files_frame, 
+                 text="Note : Les noms des colonnes sont flexibles, mais l'ordre doit être : Nom de l'élève, suivi des n choix (où n est le nombre de choix défini plus haut)", 
+                 style='Info.TLabel').pack(anchor='w', pady=(0, 10))
         
         file_select_frame2 = ttk.Frame(files_frame)
         file_select_frame2.pack(fill='x')
@@ -83,7 +108,6 @@ class SatisfierGUI:
         signature_frame = ttk.Frame(self.root)
         signature_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=5)
         
-        # Utilisation d'un Label avec la police par défaut pour le symbole pi
         signature_label = tk.Label(
             signature_frame, 
             text="By KπX",
