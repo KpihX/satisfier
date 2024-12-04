@@ -20,6 +20,7 @@ class Student:
     name: str
     choices: List[int]  # Liste ordonnée des IDs des choix
     assigned_choice: int = None
+    forced_assignment: bool = False  # Ajout de l'attribut forced_assignment avec une valeur par défaut
 
 @dataclass
 class AssignmentProblem:
@@ -30,14 +31,26 @@ class AssignmentProblem:
 
     def get_satisfaction_score(self) -> float:
         """Calcule le score de satisfaction global"""
-        if not all(s.assigned_choice is not None for s in self.students):
+        if not any(s.assigned_choice is not None for s in self.students):
             return 0.0
         
         total_score = 0
+        total_students = len(self.students)
+        
         for student in self.students:
-            if student.assigned_choice is not None:
-                # Le score est inversement proportionnel à la position du choix
-                choice_position = student.choices.index(student.assigned_choice) + 1
-                total_score += (self.k - choice_position + 1) / self.k
+            if student.assigned_choice is None:
+                continue
                 
-        return total_score / len(self.students)
+            if student.forced_assignment:
+                # Pour une attribution forcée, on donne un score minimal
+                total_score += 0.1
+            else:
+                # Le score est inversement proportionnel à la position du choix
+                try:
+                    choice_position = student.choices.index(student.assigned_choice) + 1
+                    total_score += (self.k - choice_position + 1) / self.k
+                except ValueError:
+                    # Si le choix n'est pas dans la liste (ne devrait pas arriver)
+                    total_score += 0.1
+                
+        return total_score / total_students
