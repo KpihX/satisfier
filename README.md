@@ -1,43 +1,114 @@
-# Satisfier - Optimiseur de Choix
+# 🎯 Satisfier - Optimiseur de Choix
 
-Ce programme permet d'optimiser la répartition des choix pour un groupe de personnes en maximisant la satisfaction globale.
+## 📝 Description
 
-## Description du problème
+Satisfier est un outil d'optimisation intelligent conçu pour résoudre le défi complexe de l'attribution d'activités aux étudiants en fonction de leurs préférences. 🎓
 
-- n jeunes doivent faire k choix parmi m options possibles
-- Chaque option i a une capacité maximale de mi places
-- Les jeunes classent leurs choix de 1 à k par ordre de préférence
-- Le programme optimise la répartition pour maximiser la satisfaction globale (priorité aux premiers choix)
+L'application utilise des algorithmes d'optimisation pour maximiser la satisfaction globale en tenant compte :
 
-## Structure du projet
+- 📊 Des capacités maximales de chaque activité
+- 🎯 Des préférences ordonnées des étudiants
+- ⚖️ De l'équité dans la distribution des choix
 
-- `main.py` : Point d'entrée du programme
-- `models/` : Classes et structures de données
-- `solver/` : Algorithmes d'optimisation
-- `utils/` : Fonctions utilitaires
-- `tests/` : Tests unitaires
+## 🚀 Installation
 
-## Installation
+### Prérequis
 
-1. Créer un environnement virtuel :
+- Python 3.8 ou supérieur
+- pip (gestionnaire de paquets Python)
+
+### Configuration de l'environnement
+
+1. Clonez le repository :
+
 ```bash
-# Windows
-python -m venv env
-env\Scripts\activate
-
-# Linux/MacOS
-python3 -m venv env
-source env/bin/activate
+git clone [URL_du_repo]
+cd satisfier
 ```
 
-2. Installer les dépendances :
+2. Créez un environnement virtuel :
+
+```bash
+python -m venv venv
+```
+
+3. Activez l'environnement virtuel :
+
+```bash
+# Windows
+venv\Scripts\activate
+```
+
+4. Installez les dépendances :
+
 ```bash
 pip install -r requirements.txt
 ```
 
-## Utilisation
+## 📥 Fichiers d'entrée
 
-Assurez-vous que l'environnement virtuel est activé, puis exécutez :
+L'application utilise deux fichiers Excel (.xlsx) ou (.csv) comme entrée qu'il faudra indiquer dans l'interface graphique :
+
+1. `activites.xlsx` :
+
+   - Colonnes requises : `id`, `name`, `capacity`
+   - Décrit les activités disponibles et leurs capacités maximales
+2. `student_choices.xlsx` :
+
+   - Colonnes requises : `name`, `choice1`, `choice2`, `choice3`, ...
+   - Liste les étudiants et leurs choix ordonnés
+
+⚠️ Note : Vous pouvez utiliser les fichiers exemples fournis dans le dossier `data/` comme modèles. Il suffit de modifier leur contenu en gardant la même structure.
+
+## 🎮 Utilisation
+
+### Interface graphique
+
+1. Lancez l'application :
+
 ```bash
-python main.py
+python gui.py
 ```
+
+2. Utilisez l'interface pour :
+   - 📂 Sélectionner vos fichiers d'entrée
+   - 🔢 Spécifier le nombre de choix par étudiant
+   - 🚀 Lancer l'optimisation
+
+### Création de l'exécutable
+
+Pour créer un exécutable standalone :
+
+```bash
+# 1. Assurez-vous d'avoir toutes les dépendances
+pip install -r requirements.txt
+
+# 2. Générez l'exécutable
+python build_exe.py
+```
+
+L'exécutable sera créé dans le dossier `dist/`.
+
+## 📊 Résultats
+
+L'application génère un fichier Excel dans le dossier `resultats/` contenant :
+
+- 📋 Les assignations individuelles
+- 📊 La répartition par activité
+- 📈 Les statistiques de satisfaction
+
+## 🛠️ Technologies utilisées
+
+- Python 3.8+
+- tkinter pour l'interface graphique
+- pandas pour la manipulation des données
+- openpyxl pour la gestion des fichiers Excel
+- PyInstaller pour la création de l'exécutable
+
+## ✨ Auteur
+
+By KπX
+
+## 📄 Licence
+
+Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.

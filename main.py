@@ -4,15 +4,40 @@ from solver.optimizer import SatisfactionOptimizer
 import os
 from datetime import datetime
 
+def read_file(file_path: str) -> pd.DataFrame:
+    """Lit un fichier CSV ou Excel et retourne un DataFrame"""
+    file_ext = os.path.splitext(file_path)[1].lower()
+    try:
+        if file_ext == '.csv':
+            return pd.read_csv(file_path, encoding='utf-8')
+        elif file_ext in ['.xlsx', '.xls']:
+            return pd.read_excel(file_path)
+        else:
+            raise ValueError(f"Format de fichier non supporté : {file_ext}")
+    except UnicodeDecodeError:
+        # Si l'UTF-8 échoue, essayons avec latin-1
+        if file_ext == '.csv':
+            return pd.read_csv(file_path, encoding='latin-1')
+        raise
+
 def load_data(activities_file: str, choices_file: str, k: int) -> AssignmentProblem:
-    """Charge les données depuis les fichiers CSV"""
-    # Lecture des fichiers CSV
-    activities_df = pd.read_csv(activities_file)
-    choices_df = pd.read_csv(choices_file)
+    """Charge les données depuis les fichiers CSV ou Excel"""
+    # Lecture des fichiers
+    activities_df = read_file(activities_file)
+    choices_df = read_file(choices_file)
+    
+    # Vérification des colonnes requises
+    required_activities_cols = {'id', 'name', 'capacity'}
+    if not all(col in activities_df.columns for col in required_activities_cols):
+        raise ValueError("Le fichier des activités doit contenir les colonnes : id, name, capacity")
+    
+    required_choices_cols = {'name'} | {f'choice{i}' for i in range(1, k + 1)}
+    if not all(col in choices_df.columns for col in required_choices_cols):
+        raise ValueError(f"Le fichier des choix doit contenir les colonnes : name, choice1, ..., choice{k}")
     
     # Création des choix disponibles
     choices = {
-        row['id']: Choice(row['id'], row['name'], row['capacity'])
+        int(row['id']): Choice(int(row['id']), str(row['name']), int(row['capacity']))
         for _, row in activities_df.iterrows()
     }
     
@@ -20,8 +45,11 @@ def load_data(activities_file: str, choices_file: str, k: int) -> AssignmentProb
     students = []
     for idx, row in choices_df.iterrows():
         student_id = idx + 1  # ID auto-généré
-        choices_list = [row[f'choice{i}'] for i in range(1, k + 1)]
-        student = Student(student_id, row['name'], choices_list)
+        try:
+            choices_list = [int(row[f'choice{i}']) for i in range(1, k + 1)]
+        except ValueError as e:
+            raise ValueError(f"Erreur de format pour l'étudiant {row['name']}: les choix doivent être des nombres")
+        student = Student(student_id, str(row['name']), choices_list)
         students.append(student)
     
     return AssignmentProblem(students, choices, k)
@@ -118,7 +146,7 @@ def generate_results_file(solution: AssignmentProblem, summary: dict, output_dir
     # Créer le DataFrame des statistiques avec les labels
     stats_df = pd.DataFrame(stats_rows, index=['Nombre d\'élèves', 'Capacité maximale'])
     
-    # Écriture dans le fichier Excel
+    # Écriture dans le fichier Excel avec l'encodage approprié
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         # Onglet des assignations individuelles
         results_df.to_excel(writer, sheet_name='Assignations', index=False)
@@ -156,8 +184,8 @@ def generate_results_file(solution: AssignmentProblem, summary: dict, output_dir
 def main():
     # Chemins des fichiers
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    activities_file = os.path.join(current_dir, 'data', 'activities.csv')
-    choices_file = os.path.join(current_dir, 'data', 'student_choices.csv')
+    activities_file = os.path.join(current_dir, 'data', 'activities.xlsx')
+    choices_file = os.path.join(current_dir, 'data', 'student_choices.xlsx')
     output_dir = os.path.join(current_dir, 'resultats')
     
     # Création du dossier de résultats s'il n'existe pas

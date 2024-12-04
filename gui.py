@@ -4,13 +4,18 @@ import pandas as pd
 import os
 from main import load_data, generate_results_file
 from solver.optimizer import SatisfactionOptimizer
+from logo import create_logo
 
 class SatisfierGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Satisfier - Optimisation des choix")
-        self.root.geometry("800x600")
+        self.root.geometry("800x800")
         self.root.configure(padx=20, pady=20)
+
+        # Création du logo s'il n'existe pas
+        if not os.path.exists('assets/logo.png'):
+            create_logo()
 
         # Variables
         self.activities_path = tk.StringVar()
@@ -22,6 +27,14 @@ class SatisfierGUI:
         style.configure('Title.TLabel', font=('Helvetica', 16, 'bold'))
         style.configure('Header.TLabel', font=('Helvetica', 12, 'bold'))
         style.configure('Info.TLabel', font=('Helvetica', 10), wraplength=700)
+
+        # Logo
+        try:
+            self.logo_image = tk.PhotoImage(file='assets/logo.png')
+            logo_label = ttk.Label(root, image=self.logo_image)
+            logo_label.pack(pady=(0, 10))
+        except:
+            pass  # Si le logo ne peut pas être chargé, on continue sans
 
         # Titre
         ttk.Label(root, text="Optimisation des choix d'activités", style='Title.TLabel').pack(pady=(0, 20))
@@ -39,7 +52,7 @@ class SatisfierGUI:
 
         # Section Activités
         ttk.Label(files_frame, text="Fichier des activités :", style='Header.TLabel').pack(anchor='w', pady=(0, 5))
-        ttk.Label(files_frame, text="Format attendu (CSV) :", style='Info.TLabel').pack(anchor='w')
+        ttk.Label(files_frame, text="Format attendu (CSV ou Excel) :", style='Info.TLabel').pack(anchor='w')
         ttk.Label(files_frame, text="id,name,capacity\n1,Théâtre,3\n2,Musique,2\n...", font=('Courier', 9)).pack(anchor='w', pady=(0, 10))
         
         file_select_frame = ttk.Frame(files_frame)
@@ -49,7 +62,7 @@ class SatisfierGUI:
 
         # Section Choix des élèves
         ttk.Label(files_frame, text="Fichier des choix des élèves :", style='Header.TLabel').pack(anchor='w', pady=(0, 5))
-        ttk.Label(files_frame, text="Format attendu (CSV) :", style='Info.TLabel').pack(anchor='w')
+        ttk.Label(files_frame, text="Format attendu (CSV ou Excel) :", style='Info.TLabel').pack(anchor='w')
         ttk.Label(files_frame, text="name,choice1,choice2,choice3\nEmma Martin,1,3,5\nLucas Dubois,2,1,4\n...", 
                  font=('Courier', 9)).pack(anchor='w', pady=(0, 10))
         
@@ -59,12 +72,35 @@ class SatisfierGUI:
         ttk.Button(file_select_frame2, text="Parcourir", command=self.browse_choices).pack(side='right')
 
         # Bouton de traitement
-        ttk.Button(root, text="Lancer l'optimisation", command=self.process_files).pack(pady=20)
+        process_button = ttk.Button(root, text="Lancer l'optimisation", command=self.process_files)
+        process_button.pack(pady=20)
+        
+        # Style du bouton
+        style.configure('TButton', font=('Helvetica', 10))
+        process_button.configure(style='TButton')
+
+        # Ajout de la signature en bas à droite
+        signature_frame = ttk.Frame(self.root)
+        signature_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=5)
+        
+        # Utilisation d'un Label avec la police par défaut pour le symbole pi
+        signature_label = tk.Label(
+            signature_frame, 
+            text="By KπX",
+            font=('TkDefaultFont', 10, 'bold italic'),
+            foreground='#666666'
+        )
+        signature_label.pack(side=tk.RIGHT)
 
     def browse_activities(self):
         filename = filedialog.askopenfilename(
             title="Sélectionner le fichier des activités",
-            filetypes=[("Fichiers CSV", "*.csv"), ("Tous les fichiers", "*.*")]
+            filetypes=[
+                ("Fichiers supportés", "*.csv;*.xlsx;*.xls"),
+                ("Fichiers CSV", "*.csv"),
+                ("Fichiers Excel", "*.xlsx;*.xls"),
+                ("Tous les fichiers", "*.*")
+            ]
         )
         if filename:
             self.activities_path.set(filename)
@@ -72,7 +108,12 @@ class SatisfierGUI:
     def browse_choices(self):
         filename = filedialog.askopenfilename(
             title="Sélectionner le fichier des choix",
-            filetypes=[("Fichiers CSV", "*.csv"), ("Tous les fichiers", "*.*")]
+            filetypes=[
+                ("Fichiers supportés", "*.csv;*.xlsx;*.xls"),
+                ("Fichiers CSV", "*.csv"),
+                ("Fichiers Excel", "*.xlsx;*.xls"),
+                ("Tous les fichiers", "*.*")
+            ]
         )
         if filename:
             self.choices_path.set(filename)
@@ -88,31 +129,23 @@ class SatisfierGUI:
                 messagebox.showerror("Erreur", "Le nombre de choix doit être un nombre entier positif")
                 return False
 
-            # Validation du fichier des activités
+            # Validation des fichiers
             if not self.activities_path.get():
                 messagebox.showerror("Erreur", "Veuillez sélectionner le fichier des activités")
                 return False
             
-            activities_df = pd.read_csv(self.activities_path.get())
-            required_columns = {'id', 'name', 'capacity'}
-            if not all(col in activities_df.columns for col in required_columns):
-                messagebox.showerror("Erreur", 
-                    "Le fichier des activités doit contenir les colonnes : id, name, capacity")
-                return False
-
-            # Validation du fichier des choix
             if not self.choices_path.get():
                 messagebox.showerror("Erreur", "Veuillez sélectionner le fichier des choix")
                 return False
-            
-            choices_df = pd.read_csv(self.choices_path.get())
-            required_columns = {'name'} | {f'choice{i}' for i in range(1, k + 1)}
-            if not all(col in choices_df.columns for col in required_columns):
-                messagebox.showerror("Erreur", 
-                    f"Le fichier des choix doit contenir les colonnes : name, choice1, choice2, ..., choice{k}")
+
+            # Test de lecture des fichiers
+            try:
+                problem = load_data(self.activities_path.get(), self.choices_path.get(), k)
+                return True
+            except Exception as e:
+                messagebox.showerror("Erreur", str(e))
                 return False
 
-            return True
         except Exception as e:
             messagebox.showerror("Erreur", f"Erreur lors de la validation des fichiers : {str(e)}")
             return False
@@ -145,6 +178,9 @@ class SatisfierGUI:
 def main():
     root = tk.Tk()
     app = SatisfierGUI(root)
+    # Définir l'icône de la fenêtre
+    if os.path.exists('assets/logo.ico'):
+        root.iconbitmap('assets/logo.ico')
     root.mainloop()
 
 if __name__ == "__main__":
