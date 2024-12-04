@@ -4,7 +4,7 @@ from solver.optimizer import SatisfactionOptimizer
 import os
 from datetime import datetime
 
-def load_data(activities_file: str, choices_file: str) -> AssignmentProblem:
+def load_data(activities_file: str, choices_file: str, k: int) -> AssignmentProblem:
     """Charge les données depuis les fichiers CSV"""
     # Lecture des fichiers CSV
     activities_df = pd.read_csv(activities_file)
@@ -20,12 +20,9 @@ def load_data(activities_file: str, choices_file: str) -> AssignmentProblem:
     students = []
     for idx, row in choices_df.iterrows():
         student_id = idx + 1  # ID auto-généré
-        choices_list = [row['choice1'], row['choice2'], row['choice3']]
+        choices_list = [row[f'choice{i}'] for i in range(1, k + 1)]
         student = Student(student_id, row['name'], choices_list)
         students.append(student)
-    
-    # Nombre de choix par étudiant (déduit des données)
-    k = len([col for col in choices_df.columns if col.startswith('choice')])
     
     return AssignmentProblem(students, choices, k)
 
@@ -166,8 +163,11 @@ def main():
     # Création du dossier de résultats s'il n'existe pas
     os.makedirs(output_dir, exist_ok=True)
     
+    # Nombre de choix par étudiant
+    k = 3
+    
     # Chargement des données
-    problem = load_data(activities_file, choices_file)
+    problem = load_data(activities_file, choices_file, k)
     
     # Création et exécution de l'optimiseur
     optimizer = SatisfactionOptimizer(problem)
