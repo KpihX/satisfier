@@ -60,12 +60,20 @@ def generate_results_file(solution: AssignmentProblem, summary: dict, output_dir
     results_data = []
     for student in solution.students:
         assigned_activity = solution.choices[student.assigned_choice] if student.assigned_choice else None
-        choice_position = (student.choices.index(student.assigned_choice) + 1) if student.assigned_choice else None
         
+        # Déterminer le statut de l'attribution
+        if assigned_activity is None:
+            assignment_status = "Non assigné"
+        elif student.forced_assignment:
+            assignment_status = "Attribution aléatoire"
+        else:
+            choice_position = student.choices.index(student.assigned_choice) + 1
+            assignment_status = f"Choix {choice_position}"
+
         results_data.append({
             'Nom': student.name,
             'Activité assignée': assigned_activity.name if assigned_activity else "Non assigné",
-            'Choix obtenu': f"Choix {choice_position}" if choice_position else "Non assigné"
+            'Statut': assignment_status
         })
     
     # Création du DataFrame des résultats
@@ -80,34 +88,55 @@ def generate_results_file(solution: AssignmentProblem, summary: dict, output_dir
     total_students = len(solution.students)
     
     # Nombre d'étudiants par choix
+    total_satisfied = 0
     for i in range(1, solution.k + 1):
         choice_key = f"choice_{i}"
         count = summary['choice_distribution'].get(choice_key, 0)
         percentage = (count / total_students) * 100
+        total_satisfied += count
         stats_data.append({
             'Niveau de satisfaction': f"Choix {i}",
             'Nombre d\'étudiants': count,
             'Pourcentage': f"{percentage:.1f}%"
         })
     
-    # Ajout des non-assignés si présents
+    # Calcul du total des étudiants n'ayant pas eu un de leurs choix
+    total_unsatisfied = summary['forced_assignments'] + summary['unassigned']
+    percentage_unsatisfied = (total_unsatisfied / total_students) * 100
+    
+    # Ajout des attributions forcées
+    if summary['forced_assignments'] > 0:
+        percentage_forced = (summary['forced_assignments'] / total_students) * 100
+        stats_data.append({
+            'Niveau de satisfaction': "Attributions aléatoires (aucun choix satisfait)",
+            'Nombre d\'étudiants': summary['forced_assignments'],
+            'Pourcentage': f"{percentage_forced:.1f}%"
+        })
+
+    # Ajout des non-assignés
     if summary['unassigned'] > 0:
         percentage_unassigned = (summary['unassigned'] / total_students) * 100
         stats_data.append({
-            'Niveau de satisfaction': "Non assignés",
+            'Niveau de satisfaction': "Non assignés (aucun choix satisfait)",
             'Nombre d\'étudiants': summary['unassigned'],
             'Pourcentage': f"{percentage_unassigned:.1f}%"
         })
     
-    # Score global
+    # Ajout du résumé global de satisfaction
     stats_data.append({
-        'Niveau de satisfaction': "Score global de satisfaction",
-        'Nombre d\'étudiants': total_students,
-        'Pourcentage': f"{summary['satisfaction_score']:.1%}"
+        'Niveau de satisfaction': "TOTAL - Choix satisfaits",
+        'Nombre d\'étudiants': total_satisfied,
+        'Pourcentage': f"{(total_satisfied / total_students) * 100:.1f}%"
+    })
+    stats_data.append({
+        'Niveau de satisfaction': "TOTAL - Aucun choix satisfait",
+        'Nombre d\'étudiants': total_unsatisfied,
+        'Pourcentage': f"{percentage_unsatisfied:.1f}%"
     })
     
-    stats_df_satisfaction = pd.DataFrame(stats_data)
-    
+    # Création du DataFrame des statistiques
+    stats_df = pd.DataFrame(stats_data)
+
     # Préparation de la répartition par activité
     activities_students = {}
     max_students = 0
@@ -133,7 +162,7 @@ def generate_results_file(solution: AssignmentProblem, summary: dict, output_dir
     # Créer le DataFrame principal avec les étudiants
     activities_df = pd.DataFrame(activities_data)
     
-    # Créer un DataFrame séparé pour les statistiques
+    # Créer un DataFrame séparé pour les statistiques d'activités
     stats_rows = []
     # Ligne pour le nombre d'élèves
     num_students = {activity: len(students) for activity, students in activities_students.items()}
@@ -144,27 +173,24 @@ def generate_results_file(solution: AssignmentProblem, summary: dict, output_dir
     stats_rows.append(capacities)
     
     # Créer le DataFrame des statistiques avec les labels
-    stats_df = pd.DataFrame(stats_rows, index=['Nombre d\'élèves', 'Capacité maximale'])
+    activities_stats_df = pd.DataFrame(stats_rows, index=['Nombre d\'élèves', 'Capacité maximale'])
     
-    # Écriture dans le fichier Excel avec l'encodage approprié
+    # Écriture dans le fichier Excel
     with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
         # Onglet des assignations individuelles
         results_df.to_excel(writer, sheet_name='Assignations', index=False)
         
         # Onglet de la répartition par activité
-        # Écrire le DataFrame principal
         activities_df.to_excel(writer, sheet_name='Répartition par activité', index=False)
         
-        # Calculer la position pour les statistiques (2 lignes après la fin des données)
+        # Écrire les statistiques d'activités en dessous
         start_row = len(activities_df.index) + 2
+        activities_stats_df.to_excel(writer, sheet_name='Répartition par activité', startrow=start_row)
         
-        # Écrire les statistiques
-        stats_df.to_excel(writer, sheet_name='Répartition par activité', startrow=start_row)
+        # Onglet des statistiques de satisfaction
+        stats_df.to_excel(writer, sheet_name='Statistiques', index=False)
         
-        # Onglet des statistiques
-        stats_df_satisfaction.to_excel(writer, sheet_name='Statistiques', index=False)
-        
-        # Ajustement automatique de la largeur des colonnes pour chaque feuille
+        # Ajustement automatique de la largeur des colonnes
         for sheet_name in writer.sheets:
             worksheet = writer.sheets[sheet_name]
             for column in worksheet.columns:
