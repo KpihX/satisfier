@@ -1,7 +1,17 @@
-id,name,capacity
-1,Théâtre,3
-2,Musique,2
-3,Danse,4
-4,Arts plastiques,3
-5,Sport,5
-6,Informatique,4
+Id,Activite,Capacite
+1,Poker Echecs et Jeux de societes,20
+2,Macrame (Fabrication d'ange/pere Noel),10
+3,Atelier ecriture,12
+4,Boxe Francaise,10
+5,Tournoi Urban football,20
+6,Patisserie de Noel,14
+7,Reportage photo ou creation TikTok,8
+8,Film et debat,20
+9,Activite retour Lourdes Message de paix,12
+10,Coloriages de dessins Noel,20
+11,Films de Noel,12
+12,Production de Sables (biscuit),12
+13,Atelier bois : creation de sapins etc,8
+14,Creation de bijoux : perles bracelets portes clefs,10
+15,Arts du Cirque : jonglages etc,12
+16,Karaoke,10

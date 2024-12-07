@@ -5,7 +5,8 @@ from logo import create_logo
 # Créer le logo s'il n'existe pas
 if not os.path.exists('assets'):
     os.makedirs('assets')
-if not os.path.exists('assets/logo.ico'):
+    create_logo()
+elif not os.path.exists('assets/logo.png') or not os.path.exists('assets/logo.ico'):
     create_logo()
 
 PyInstaller.__main__.run([

@@ -28,6 +28,11 @@ class AssignmentProblem:
     students: List[Student]
     choices: Dict[int, Choice]
     k: int  # Nombre de choix par étudiant
+    students_no_choice: List[str] = None
+
+    def __post_init__(self):
+        if self.students_no_choice is None:
+            self.students_no_choice = []
 
     def get_satisfaction_score(self) -> float:
         """Calcule le score de satisfaction global"""

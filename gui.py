@@ -4,7 +4,7 @@ import pandas as pd
 import os
 from main import load_data, generate_results_file
 from solver.optimizer import SatisfactionOptimizer
-from logo import create_logo
+from datetime import datetime
 
 class SatisfierGUI:
     def __init__(self, root):
@@ -12,10 +12,6 @@ class SatisfierGUI:
         self.root.title("Satisfier - Optimisation des choix")
         self.root.geometry("800x910")  # Augmentation de la hauteur
         self.root.configure(padx=20, pady=5)
-
-        # Création du logo s'il n'existe pas
-        if not os.path.exists('assets/logo.png'):
-            create_logo()
 
         # Variables
         self.activities_path = tk.StringVar()
@@ -29,7 +25,7 @@ class SatisfierGUI:
         style.configure('Info.TLabel', font=('Helvetica', 10), wraplength=700)
         style.configure('Example.TLabel', font=('Courier', 9), wraplength=700)
 
-        # Logo
+        # Logo (uniquement si le fichier existe)
         try:
             self.logo_image = tk.PhotoImage(file='assets/logo.png')
             logo_label = ttk.Label(root, image=self.logo_image)
@@ -179,10 +175,6 @@ class SatisfierGUI:
             return
 
         try:
-            # Création du dossier resultats si nécessaire
-            output_dir = os.path.join(os.getcwd(), 'resultats')
-            os.makedirs(output_dir, exist_ok=True)
-
             # Chargement et traitement des données
             k = int(self.num_choices.get())
             problem = load_data(self.activities_path.get(), self.choices_path.get(), k)
@@ -190,16 +182,39 @@ class SatisfierGUI:
             solution = optimizer.optimize()
             summary = optimizer.get_solution_summary()
 
+            # Demander à l'utilisateur où sauvegarder le fichier
+            timestamp = datetime.now().strftime("%Y-%m-%d_%Hh%Mm%Ss")
+            default_filename = f'results_assignment_{timestamp}.xlsx'
+            output_file = filedialog.asksaveasfilename(
+                title="Enregistrer les résultats",
+                initialfile=default_filename,
+                defaultextension='.xlsx',
+                filetypes=[("Fichiers Excel", "*.xlsx")]
+            )
+            
+            if not output_file:  # Si l'utilisateur annule
+                return
+            
+            # Créer le dossier de destination s'il n'existe pas
+            output_dir = os.path.dirname(output_file)
+            if output_dir and not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+                
             # Génération du fichier de résultats
-            results_file = generate_results_file(solution, summary, output_dir)
-
-            messagebox.showinfo("Succès", 
-                f"L'optimisation est terminée !\nLes résultats ont été sauvegardés dans :\n{results_file}")
+            generate_results_file(solution, summary, output_file)
+            
+            # Ouvrir le fichier avec Excel
+            try:
+                os.startfile(output_file)
+                messagebox.showinfo("Succès", "Le traitement est terminé et le fichier a été ouvert dans Excel.")
+            except Exception as e:
+                messagebox.showinfo("Succès", f"Le traitement est terminé.\nLe fichier a été enregistré dans : {output_file}")
 
         except Exception as e:
-            messagebox.showerror("Erreur", f"Une erreur est survenue : {str(e)}")
+            messagebox.showerror("Erreur", f"Une erreur est survenue lors du traitement : {str(e)}")
 
-def main():
+def launch_gui():
+    """Launch the GUI application"""
     root = tk.Tk()
     app = SatisfierGUI(root)
     # Définir l'icône de la fenêtre
@@ -208,4 +223,4 @@ def main():
     root.mainloop()
 
 if __name__ == "__main__":
-    main()
+    launch_gui()
